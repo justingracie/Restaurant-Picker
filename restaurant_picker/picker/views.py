@@ -14,3 +14,7 @@ def index(request):
 
 # function to return list of all restaurants in database
 
+def restaurant_list(request):
+    restaurants = Restaurant.objects.all()
+    context = {'restaurants': restaurants}
+    return render(request, 'picker/restaurant_list.html', context)
