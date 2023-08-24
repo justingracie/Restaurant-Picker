@@ -1,0 +1,18 @@
+{% block content %}
+
+<h1> For the indecisive!! </h1>
+
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Choose for me!</button>
+</form>
+
+<div id="choose-for-me">
+    <p>Name: {{ the_choice.name }}</p>
+    <p>Address: {{ the_choice.address }}</p>
+    <p>Description: {{ the_choice.description }}</p>
+    <p>Menu: {{ the_choice.menu }}</p>
+</div>
+
+{% endblock %}
