@@ -30,7 +30,7 @@ jobs:
           --application-name RestaurantPicker \
           --source-bundle S3Bucket="restaurant-picker",S3Key="prod/prod.zip" \
           --version-label "ver-${{ github.sha }}" \
-          --description "commit-sha-${{ github.sha }}"
+          --description "commit-sha-${{ github.sha }}" \
           --auto-create-application
 
       - name: Deploy new ElasticBeanstalk Application Version
