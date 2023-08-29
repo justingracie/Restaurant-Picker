@@ -2,20 +2,10 @@
 Django settings for production instance of restaurant_picker project
 """
 
+import os
 from restaurant_picker.settings import *
 
 DEBUG = False
-
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-DOTENV = os.path.join(BASE_DIR, '.env.development')
-load_dotenv(dotenv_path=DOTENV)
-
 
 SECRET_KEY = os.environ["SECRET_KEY"]
 
@@ -35,7 +25,7 @@ if 'RDS_HOSTNAME' in os.environ:
 
 ALLOWED_HOSTS = [
     "whereshouldweeattoday.com",
-    "*.us-east-1.elasticbeanstalk.com",
+    "*.us-east-2.elasticbeanstalk.com",
 ]
 
 

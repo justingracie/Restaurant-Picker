@@ -34,4 +34,4 @@ jobs:
           --auto-create-application
 
       - name: Deploy new ElasticBeanstalk Application Version
-        run: aws elasticbeanstalk update-environment --environment-name restaurant-picker-prod --version-label "ver-${{ github.sha }}"
+        run: aws elasticbeanstalk update-environment --environment-name RestaurantPicker-env --version-label "ver-${{ github.sha }}"
