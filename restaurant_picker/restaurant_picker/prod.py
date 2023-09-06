@@ -13,6 +13,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 if 'RDS_HOSTNAME' in os.environ:
     DATABASES = {
         'default': {
+            'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.environ['RDS_DB_NAME'],
             'USER': os.environ['RDS_USERNAME'],
             'PASSWORD': os.environ['RDS_PASSWORD'],
