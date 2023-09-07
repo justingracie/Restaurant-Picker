@@ -59,7 +59,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': '/var/log/app-logs/django.log',
+            'filename': os.environ.get('DJANGO_LOG_FILE_PATH'),
         },
     },
     'loggers': {
