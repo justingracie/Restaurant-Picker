@@ -37,4 +37,38 @@ ALLOWED_HOSTS = [
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+USE_X_FORWARDED_PORT = True
 
+# Logging Config
+LOGGING = {
+    'version': 1,
+    'formatters': {
+        'timeFormat': {
+            'format': '[%(asctime)s] [%(name)s:line%(lineno)d] [%(levelname)s] %(message)s',
+            'datefmt': '%m/%d/%Y %I:%M:%S%p',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            # Azure by default will add timestamp to logs
+            'formatter': 'timeFormat',
+            'filename': '/var/log/debug.log',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'timeFormat',
+            'stream': 'ext://sys.stdout',
+        },
+    },
+    'loggers': {
+        # empty string defaults to root logger
+        '': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
