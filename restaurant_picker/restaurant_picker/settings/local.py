@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DOTENV = os.path.join(BASE_DIR, '.env.development')
-if not os.path.exists(os.path.join(BASE_DIR)):
+if not os.path.exists(DOTENV):
     raise ImportError
 load_dotenv(dotenv_path=DOTENV)
 
