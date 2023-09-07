@@ -2,6 +2,9 @@
 Django settings for production instance of restaurant_picker project
 """
 import os
+import socket
+
+
 
 DEBUG = False
 
@@ -22,10 +25,13 @@ if 'RDS_HOSTNAME' in os.environ:
         }
     }
 
+_hostname = socket.gethostname()
+_local_ip = socket.gethostbyname(_hostname)
 
 ALLOWED_HOSTS = [
     "whereshouldweeattoday.com",
     "*.us-east-2.elasticbeanstalk.com",
+    _local_ip,
 ]
 
 
