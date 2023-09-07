@@ -49,13 +49,6 @@ LOGGING = {
         },
     },
     'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            # Azure by default will add timestamp to logs
-            'formatter': 'timeFormat',
-            'filename': '/var/log/debug.log',
-        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -66,7 +59,7 @@ LOGGING = {
     'loggers': {
         # empty string defaults to root logger
         '': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
         },
