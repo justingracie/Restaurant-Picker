@@ -56,16 +56,11 @@ LOGGING = {
             'formatter': 'timeFormat',
             'stream': 'ext://sys.stdout',
         },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.environ.get('DJANGO_LOG_FILE_PATH'),
-        },
     },
     'loggers': {
         # empty string defaults to root logger
         '': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
         },
