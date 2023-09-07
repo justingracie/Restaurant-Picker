@@ -30,7 +30,8 @@ _local_ip = socket.gethostbyname(_hostname)
 
 ALLOWED_HOSTS = [
     "whereshouldweeattoday.com",
-    ".us-east-2.elasticbeanstalk.com",
+    ".whereshouldweeattoday.com",
+    _hostname,
     _local_ip,
 ]
 
