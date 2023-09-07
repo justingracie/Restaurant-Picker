@@ -42,6 +42,7 @@ USE_X_FORWARDED_PORT = True
 # Logging Config
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
     'formatters': {
         'timeFormat': {
             'format': '[%(asctime)s] [%(name)s:line%(lineno)d] [%(levelname)s] %(message)s',
@@ -55,11 +56,16 @@ LOGGING = {
             'formatter': 'timeFormat',
             'stream': 'ext://sys.stdout',
         },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/var/log/app-logs/django.log',
+        },
     },
     'loggers': {
         # empty string defaults to root logger
         '': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': True,
         },
