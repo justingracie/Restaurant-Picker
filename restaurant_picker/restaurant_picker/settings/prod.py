@@ -1,11 +1,11 @@
 """
 Django settings for production instance of restaurant_picker project
 """
-
 import os
-from restaurant_picker.settings import *
 
 DEBUG = False
+
+print("using prod settings")
 
 SECRET_KEY = os.environ["SECRET_KEY"]
 
