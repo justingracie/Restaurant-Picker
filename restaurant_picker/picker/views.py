@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 import random
+import logging
 
 # Create your views here.
 
@@ -8,8 +9,11 @@ from django.shortcuts import render
 
 from picker.models import Restaurant
 
+LOGGER = logging.getLogger()
+
 
 def index(request):
+    LOGGER.info("reaching index view method")
     return HttpResponse("Yummy choices coming soon!")
 
 
@@ -33,4 +37,3 @@ def choose_for_me(request):
         return render(request, 'picker/choose_for_me.html', context)
 
     return render(request, 'picker/choose_for_me.html')
-
