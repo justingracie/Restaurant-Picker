@@ -1,0 +1,49 @@
+name: dynamic-qa-env
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed, ready_for_review, converted_to_draft]
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
+
+jobs:
+  create-deployment-preview:
+    if: >
+      (github.event.action == 'opened' || github.event.action == 'ready_for_review' || github.event.action == 'reopened') && 
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Initial Deployment Preview Comment
+        uses: peter-evans/create-or-update-comment@v1.4.5
+        id: pr-preview-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### Building Deployment Preview..
+            A preview of this Pull Request is being created. Hold tight while it's building ⚒️
+            This comment will be automatically updated when the preview is ready.
+
+      - name: Create ZIP deployment package
+        run: |
+          cd restaurant_picker
+          zip -r ../$PACKAGE_NAME . *
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: "us-east-2"
+
+      - name: Upload package to S3 bucket
+        run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_ZIP/
+        env:
+          PACKAGE_ZIP: `$PACKAGE_NAME.zip`
+
+#      Not New after this
