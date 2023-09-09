@@ -150,7 +150,6 @@ jobs:
 #          reactions: 'rocket'
 
   update-deployment-preview:
-    needs: check-slot-availability
     if: >
       github.event.action == 'synchronize' && 
       github.event.pull_request.draft == false && 
