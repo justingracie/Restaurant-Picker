@@ -10,7 +10,6 @@ on:
 env:
   PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
 
-
 jobs:
   create-deployment-preview:
     if: >
@@ -45,7 +44,7 @@ jobs:
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
         env:
-          PACKAGE_ZIP: $PACKAGE_NAME.zip
+          PACKAGE_ZIP: "$PACKAGE_NAME.zip"
 
 #      Not New after this
 
@@ -195,7 +194,7 @@ jobs:
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
         env:
-          PACKAGE_ZIP: $PACKAGE_NAME.zip
+          PACKAGE_ZIP: "$PACKAGE_NAME.zip"
 
 #      - name: Delete PR Deployment Slot
 #        run: |
@@ -329,7 +328,7 @@ jobs:
       - name: Remove package from S3 bucket
         run: aws s3 rm s3://restaurant-picker/$PACKAGE_NAME/$PACKAGE_ZIP
         env:
-          PACKAGE_ZIP: $PACKAGE_NAME.zip
+          PACKAGE_ZIP: "$PACKAGE_NAME.zip"
 
 #      - name: Find PR Preview Comment
 #        uses: peter-evans/find-comment@v1
