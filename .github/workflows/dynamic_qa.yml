@@ -19,15 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - name: Initial Deployment Preview Comment
-        uses: peter-evans/create-or-update-comment@v1.4.5
-        id: pr-preview-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### Building Deployment Preview..
-            A preview of this Pull Request is being created. Hold tight while it's building ⚒️
-            This comment will be automatically updated when the preview is ready.
+#      - name: Initial Deployment Preview Comment
+#        uses: peter-evans/create-or-update-comment@v1.4.5
+#        id: pr-preview-comment
+#        with:
+#          issue-number: ${{ github.event.pull_request.number }}
+#          body: |
+#            ### Building Deployment Preview..
+#            A preview of this Pull Request is being created. Hold tight while it's building ⚒️
+#            This comment will be automatically updated when the preview is ready.
 
       - name: Create ZIP deployment package
         run: |
@@ -160,24 +160,24 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Find PR Preview Comment
-        uses: peter-evans/find-comment@v1
-        id: deploy-preview-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: Deployment Preview
-
-      - name: Update PR Preview Comment
-        if: steps.deploy-preview-comment.outputs.comment-id != ''
-        uses: peter-evans/create-or-update-comment@v1.4.5
-        with:
-          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            ### Building Deployment Preview..
-            The Pull Request preview is being updated. Hold tight while it's building ⚒️
-            This comment will be automatically updated when the new version is ready.
+#      - name: Find PR Preview Comment
+#        uses: peter-evans/find-comment@v1
+#        id: deploy-preview-comment
+#        with:
+#          issue-number: ${{ github.event.pull_request.number }}
+#          comment-author: 'github-actions[bot]'
+#          body-includes: Deployment Preview
+#
+#      - name: Update PR Preview Comment
+#        if: steps.deploy-preview-comment.outputs.comment-id != ''
+#        uses: peter-evans/create-or-update-comment@v1.4.5
+#        with:
+#          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
+#          edit-mode: replace
+#          body: |
+#            ### Building Deployment Preview..
+#            The Pull Request preview is being updated. Hold tight while it's building ⚒️
+#            This comment will be automatically updated when the new version is ready.
 
       - name: Create ZIP deployment package
         run: |
@@ -318,11 +318,6 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - name: Create ZIP deployment package
-        run: |
-          cd restaurant_picker
-          zip -r ../$PACKAGE_NAME . *
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -335,21 +330,21 @@ jobs:
         env:
           PACKAGE_ZIP: $PACKAGE_NAME.zip
 
-      - name: Find PR Preview Comment
-        uses: peter-evans/find-comment@v1
-        id: deploy-preview-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: Deployment Preview
-
-      - name: Update PR Preview Comment
-        if: steps.deploy-preview-comment.outputs.comment-id != ''
-        uses: peter-evans/create-or-update-comment@v1.4.5
-        with:
-          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            ### Deployment Preview
-            🏁 This PR has been closed. No deployment preview is available.
-          reactions: 'hooray'
+#      - name: Find PR Preview Comment
+#        uses: peter-evans/find-comment@v1
+#        id: deploy-preview-comment
+#        with:
+#          issue-number: ${{ github.event.pull_request.number }}
+#          comment-author: 'github-actions[bot]'
+#          body-includes: Deployment Preview
+#
+#      - name: Update PR Preview Comment
+#        if: steps.deploy-preview-comment.outputs.comment-id != ''
+#        uses: peter-evans/create-or-update-comment@v1.4.5
+#        with:
+#          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
+#          edit-mode: replace
+#          body: |
+#            ### Deployment Preview
+#            🏁 This PR has been closed. No deployment preview is available.
+#          reactions: 'hooray'
