@@ -22,7 +22,7 @@ jobs:
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     env:
-      TEMP_DB_PASSWORD: md5 -qs $(uuidgen)
+      TEMP_DB_PASSWORD: $( md5 -qs $(uuidgen))
       PACKAGE_ZIP_PATH: feature-${{ github.event.pull_request.number }}/feature-${{ github.event.pull_request.number }}.zip
     steps:
       - uses: actions/checkout@master
