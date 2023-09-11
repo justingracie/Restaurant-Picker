@@ -81,7 +81,7 @@ jobs:
               --output json \
               --query 'DBInstances[0].Endpoint.Address')
               echo ${RDS_HOSTNAME}
-              [[ -eq ${RDS_HOSTNAME} "null" ]] && exit 1
+              [[ -eq $RDS_HOSTNAME "null" ]] && exit 1
               echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
