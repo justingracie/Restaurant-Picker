@@ -22,7 +22,7 @@ jobs:
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     env:
-      TEMP_DB_PASSWORD: uuidgen
+      TEMP_DB_PASSWORD: md5 -qs $(uuidgen)
       PACKAGE_ZIP_PATH: feature-${{ github.event.pull_request.number }}/feature-${{ github.event.pull_request.number }}.zip
     steps:
       - uses: actions/checkout@master
@@ -52,6 +52,7 @@ jobs:
           --engine postgres \
           --region 'us-east-2' \
           --master-username ${{ env.DB_USERNAME }}
+          --no-manage-master-user-password
           --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
           --port ${{ env.DB_PORT }} \
           --no-multi-az
@@ -178,3 +179,18 @@ jobs:
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}"
           --no-delete-source-bundle 
 
+
+
+
+aws rds create-db-instance \
+          --db-name postgres \
+          --db-instance-identifier feature-5-postgres-db \
+          --db-instance-class db.t3.micro \
+          --allocated-storage 5 \
+          --engine postgres \
+          --region 'us-east-2' \
+          --master-username ebroot
+          --no-manage-master-user-password
+          --master-user-password $(uuidgen) \
+          --port 5432 \
+          --no-multi-az
