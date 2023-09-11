@@ -72,8 +72,8 @@ jobs:
       - name: Put RDS Hostname into Environment Variable
         run: |
             echo "RDS_HOSTNAME=$(aws rds describe-db-instances \
-            --db-instance-identifier feature-5-postgres-db \
-            --output json \ 
+            --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
+            --output json \
             --query 'DBInstances[0].Endpoint.Address')" >> $GITHUB_ENV
 
 
