@@ -70,12 +70,16 @@ jobs:
           --debug
 
       - name: Put RDS Hostname into Environment Variable
-        run: |
-            echo "RDS_HOSTNAME=$(aws rds describe-db-instances \
-            --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
-            --output json \
-            --query 'DBInstances[0].Endpoint.Address')" >> $GITHUB_ENV
-
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 5
+          retry_wait_seconds: 30
+          command: |
+              RDS_HOSTNAME=$(aws rds describe-db-instances \
+              --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
+              --output json \
+              --query 'DBInstances[0].Endpoint.Address')"
+              [[ -n RDS_HOSTNAME ]] && echo "RDS_HOSTNAME=$RDS_HOSTNAME" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
         run: |
@@ -89,7 +93,7 @@ jobs:
             {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_DB_NAME",
-              "Value": ${{ env.DB_NAME }}
+              "Value": "${{ env.DB_NAME }}"
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_USERNAME",
