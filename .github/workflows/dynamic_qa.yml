@@ -80,11 +80,12 @@ jobs:
       - name: Deploy new ElasticBeanstalk Environment
         run: |
           aws elasticbeanstalk create-environment \
+          --debug \
           --application-name RestaurantPicker \
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
           --solution-stack-name "64bit Amazon Linux 2023 v4.0.3 running Python 3.9" \
-          --option_settings [
+          --option_settings '[
             {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_DB_NAME",
@@ -106,8 +107,7 @@ jobs:
               "OptionName": "RDS_PORT",
               "Value": ${{ env.DB_PORT }}
             }
-          ] \
-          --debug
+          ]'
 
 
   update-deployment-preview:
