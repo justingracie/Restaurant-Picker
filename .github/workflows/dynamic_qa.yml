@@ -80,7 +80,8 @@ jobs:
               --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
               --output json \
               --query 'DBInstances[0].Endpoint.Address')
-              [[ -z RDS_HOSTNAME ]] && exit 1
+              echo ${RDS_HOSTNAME}
+              [[ -z ${RDS_HOSTNAME} ]] && exit 1
               echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
