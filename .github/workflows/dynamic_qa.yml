@@ -12,6 +12,8 @@ env:
   DB_PORT: 5432
   DB_NAME: postgres
   PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
+  PACKAGE_ZIP: "$PACKAGE_NAME.zip"
+
 
 jobs:
   create-deployment-preview:
@@ -21,8 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TEMP_DB_PASSWORD: uuidgen
-      PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
-      PACKAGE_ZIP_PATH: ${{ env.PACKAGE_NAME }}/${{ env.PACKAGE_ZIP }}
+      PACKAGE_ZIP_PATH: "$PACKAGE_NAME/$PACKAGE_ZIP"
     steps:
       - uses: actions/checkout@master
 
@@ -122,8 +123,6 @@ jobs:
 
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
-        env:
-          PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
 
       # Does does not need DB Update
 
@@ -157,8 +156,6 @@ jobs:
 
       - name: Remove package from S3 bucket
         run: aws s3 rm s3://restaurant-picker/$PACKAGE_NAME/$PACKAGE_ZIP
-        env:
-          PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
 
       - name: Delete RDS Database
         run: |
