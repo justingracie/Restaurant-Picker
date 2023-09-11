@@ -12,7 +12,7 @@ env:
   DB_PORT: 5432
   DB_NAME: postgres
   PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
-  PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
+  PACKAGE_ZIP: feature-${{ github.event.pull_request.number }}.zip
 
 
 jobs:
