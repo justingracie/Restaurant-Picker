@@ -42,7 +42,7 @@ jobs:
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
 
       - name: Put temporary password into Environment Variable
-        run: echo "TEMP_DB_PASSWORD=$(md5 -qs $(uuidgen))" >> $GITHUB_ENV
+        run: echo "TEMP_DB_PASSWORD=$(uuidgen)" >> $GITHUB_ENV
 
       - name: Create RDS Instance
         run: |
