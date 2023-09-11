@@ -78,11 +78,9 @@ jobs:
 
 
       - name: Deploy new ElasticBeanstalk Environment
-        env:
-          RDS_HOSTNAME: |
-
         run: |
           aws elasticbeanstalk create-environment \
+          --application-name RestaurantPicker
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
           --option_settings [
