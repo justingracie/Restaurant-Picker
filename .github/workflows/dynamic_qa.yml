@@ -77,11 +77,14 @@ jobs:
           retry_wait_seconds: 30
           command: |
               RDS_HOSTNAME=$(aws rds describe-db-instances \
-              --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
+              --db-instance-identifier "${{ env.PACKAGE_NAME }}-postgres-db" \
               --output json \
               --query 'DBInstances[0].Endpoint.Address')
-              echo ${RDS_HOSTNAME}
-              [[ -eq $RDS_HOSTNAME "null" ]] && exit 1
+              echo "${RDS_HOSTNAME}"
+              if [ "$RDS_HOSTNAME" == "null" ]; then
+                echo "RDS_HOSTNAME is null, exiting..."
+                exit 1
+              fi
               echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
