@@ -22,7 +22,6 @@ jobs:
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     env:
-      TEMP_DB_PASSWORD: $( md5 -qs $(uuidgen))
       PACKAGE_ZIP_PATH: feature-${{ github.event.pull_request.number }}/feature-${{ github.event.pull_request.number }}.zip
     steps:
       - uses: actions/checkout@master
@@ -42,6 +41,9 @@ jobs:
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
 
+      - name: Put temporary password into Environment Variable
+        run: echo "TEMP_DB_PASSWORD=$(md5 -qs $(uuidgen))" >> $GITHUB_ENV
+
       - name: Create RDS Instance
         run: |
           aws rds create-db-instance \
@@ -51,8 +53,8 @@ jobs:
           --allocated-storage 5 \
           --engine postgres \
           --region 'us-east-2' \
-          --master-username ${{ env.DB_USERNAME }}
-          --no-manage-master-user-password
+          --master-username ${{ env.DB_USERNAME }} \
+          --no-manage-master-user-password \
           --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
           --port ${{ env.DB_PORT }} \
           --no-multi-az \
@@ -67,15 +69,18 @@ jobs:
           --description "${{ env.PACKAGE_NAME }}-commit-sha-${{ github.sha }}" \
           --debug
 
+      - name: Put RDS Hostname into Environment Variable
+        run: |
+            echo "RDS_HOSTNAME=$(aws rds describe-db-instances \
+            --db-instance-identifier feature-5-postgres-db \
+            --output json \ 
+            --query 'DBInstances[0].Endpoint.Address')" >> $GITHUB_ENV
+
 
       - name: Deploy new ElasticBeanstalk Environment
         env:
           RDS_HOSTNAME: |
-            aws rds describe-db-instances \
-            --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
-            --output json \ 
-            --query 'DBInstances[0].Endpoint.Address' \
-            --debug
+
         run: |
           aws elasticbeanstalk create-environment \
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
