@@ -80,7 +80,6 @@ jobs:
               --db-instance-identifier "${{ env.PACKAGE_NAME }}-postgres-db" \
               --output json \
               --query 'DBInstances[0].Endpoint.Address')
-              echo "${RDS_HOSTNAME}"
               if [ "$RDS_HOSTNAME" == "null" ]; then
                 echo "RDS_HOSTNAME is null, exiting..."
                 exit 1
@@ -111,7 +110,7 @@ jobs:
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_HOSTNAME",
-              "Value": "${{ env.RDS_HOSTNAME }}"
+              "Value": ${{ env.RDS_HOSTNAME }}
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_PORT",
