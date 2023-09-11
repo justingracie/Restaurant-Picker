@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TEMP_DB_PASSWORD: uuidgen
-      PACKAGE_ZIP_PATH: "{$PACKAGE_NAME}/${PACKAGE_ZIP}"
+      PACKAGE_ZIP_PATH: feature-${{ github.event.pull_request.number }}/feature-${{ github.event.pull_request.number }}.zip
     steps:
       - uses: actions/checkout@master
 
@@ -48,9 +48,10 @@ jobs:
           --db-name ${{ env.DB_NAME }} \
           --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
           --db-instance-class db.t3.micro \
-          --storage 5 \
+          --allocated-storage 5 \
           --engine postgres \
           --region 'us-east-2' \
+          --master-username ${{ env.DB_USERNAME }}
           --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
           --port ${{ env.DB_PORT }} \
           --no-multi-az
@@ -63,7 +64,7 @@ jobs:
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
           --description "${{ env.PACKAGE_NAME }}-commit-sha-${{ github.sha }}"
 
-      - name: Deploy new ElasticBeanstalk Application Version
+      - name: Deploy new ElasticBeanstalk Environment
         env:
           RDS_HOSTNAME: |
             aws rds describe-db-instances \
@@ -108,9 +109,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-
-      - name: Prints env
-        run: printenv
 
       - name: Create ZIP deployment package
         run: |
