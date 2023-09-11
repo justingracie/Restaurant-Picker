@@ -56,6 +56,7 @@ jobs:
           --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
           --port ${{ env.DB_PORT }} \
           --no-multi-az
+          --debug
 
       - name: Create new ElasticBeanstalk Application Version
         run: |
@@ -64,6 +65,8 @@ jobs:
           --source-bundle S3Bucket="restaurant-picker",S3Key=${{ env.PACKAGE_ZIP_PATH }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
           --description "${{ env.PACKAGE_NAME }}-commit-sha-${{ github.sha }}"
+          --debug
+
 
       - name: Deploy new ElasticBeanstalk Environment
         env:
@@ -72,6 +75,7 @@ jobs:
             --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
             --output json \ 
             --query 'DBInstances[0].Endpoint.Address'
+            --debug
         run: |
           aws elasticbeanstalk create-environment \
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
@@ -98,7 +102,9 @@ jobs:
               "OptionName": "RDS_PORT",
               "Value": ${{ env.DB_PORT }}
             }
-          ]
+          ] \
+          --debug
+
 
   update-deployment-preview:
     if: >
