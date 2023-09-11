@@ -73,13 +73,14 @@ jobs:
         uses: nick-fields/retry@v2
         with:
           max_attempts: 5
+          timeout_seconds: 20
           retry_wait_seconds: 30
           command: |
               RDS_HOSTNAME=$(aws rds describe-db-instances \
               --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
               --output json \
               --query 'DBInstances[0].Endpoint.Address')"
-              [[ -n RDS_HOSTNAME ]] && echo "RDS_HOSTNAME=$RDS_HOSTNAME" >> $GITHUB_ENV
+              [[ -n RDS_HOSTNAME ]] && echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
         run: |
