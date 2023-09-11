@@ -12,7 +12,7 @@ env:
   DB_PORT: 5432
   DB_NAME: postgres
   PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
-  PACKAGE_ZIP: $PACKAGE_NAME & ".zip"
+  PACKAGE_ZIP: "${PACKAGE_NAME}.zip"
 
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TEMP_DB_PASSWORD: uuidgen
-      PACKAGE_ZIP_PATH: $PACKAGE_NAME & "/" & $PACKAGE_ZIP
+      PACKAGE_ZIP_PATH: "{$PACKAGE_NAME}/${PACKAGE_ZIP}"
     steps:
       - uses: actions/checkout@master
 
