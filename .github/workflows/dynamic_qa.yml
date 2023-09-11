@@ -80,7 +80,8 @@ jobs:
               --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
               --output json \
               --query 'DBInstances[0].Endpoint.Address')
-              [[ -n RDS_HOSTNAME ]] && echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
+              [[ -z RDS_HOSTNAME ]] && exit 1
+              echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
         run: |
@@ -98,19 +99,19 @@ jobs:
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_USERNAME",
-              "Value": ${{ env.DB_USERNAME }}
+              "Value": "${{ env.DB_USERNAME }}"
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_PASSWORD",
-              "Value": ${{ env.TEMP_DB_PASSWORD }}
+              "Value": "${{ env.TEMP_DB_PASSWORD }}"
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_HOSTNAME",
-              "Value": ${{ env.RDS_HOSTNAME }},
+              "Value": "${{ env.RDS_HOSTNAME }}"
             }, {
               "Namespace": "aws:elasticbeanstalk:application:environment",
               "OptionName": "RDS_PORT",
-              "Value": ${{ env.DB_PORT }}
+              "Value": "${{ env.DB_PORT }}"
             }
           ]'
 
