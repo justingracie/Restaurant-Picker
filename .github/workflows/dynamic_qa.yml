@@ -91,7 +91,7 @@ jobs:
           --application-name RestaurantPicker \
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
-          --template-name "RestaurantPicker-env-1-sc"
+          --template-name "RestaurantPicker-env-1-sc" \
           --option-settings '[
             {
               "Namespace": "aws:elasticbeanstalk:application:environment",
