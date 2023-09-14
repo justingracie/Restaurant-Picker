@@ -91,7 +91,7 @@ jobs:
           --application-name RestaurantPicker \
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
-          --template-name "RestaurantPicker-env-1-sc" \
+          --template-name "restaurant-picker-feature-template" \
           --option-settings '[
             {
               "Namespace": "aws:elasticbeanstalk:application:environment",
@@ -115,6 +115,44 @@ jobs:
               "Value": "${{ env.DB_PORT }}"
             }
           ]'
+
+      - name: Get EB Variables
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 40
+          timeout_seconds: 20
+          retry_wait_seconds: 15
+          command: |
+              EB_CNAME=$(aws elasticbeanstalk describe-environments \
+              --environment-name "RestaurantPicker-${{ env.PACKAGE_NAME }}" \
+              --region "us-east-2" \
+              --query 'Environments[0].CNAME')
+              if [ "$EB_CNAME" == "null" ]; then
+                echo "EB_CNAME is null, exiting..."
+                exit 1
+              fi
+              echo "EB_CNAME=${EB_CNAME}" >> $GITHUB_ENV
+
+      - name: Set up environment as a subdomain
+        run: |
+          aws route53 change-resource-record-sets \
+          --hosted-zone-id "Z08577757Z9WBXCTLOHL" \
+          --change-batch '{
+            "Changes": [
+              {
+                "Action": "UPSERT",
+                "ResourceRecordSet": {
+                  "Name": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+                  "Type": "A",
+                  "AliasTarget": {
+                    "HostedZoneId": "Z14LCN19Q5QHIC",
+                    "DNSName": ${{ env.EB_CNAME }},
+                    "EvaluateTargetHealth": false
+                  }
+                }
+              }
+            ]
+          }'
 
 
   update-deployment-preview:
@@ -175,6 +213,45 @@ jobs:
 
       - name: Remove package from S3 bucket
         run: aws s3 rm s3://restaurant-picker/$PACKAGE_NAME/$PACKAGE_ZIP
+
+      - name: Get EB Variables
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 40
+          timeout_seconds: 20
+          retry_wait_seconds: 15
+          command: |
+              EB_CNAME=$(aws elasticbeanstalk describe-environments \
+              --environment-name "RestaurantPicker-${{ env.PACKAGE_NAME }}" \
+              --region "us-east-2" \
+              --query 'Environments[0].CNAME')
+              if [ "$EB_CNAME" == "null" ]; then
+                echo "EB_CNAME is null, exiting..."
+                exit 1
+              fi
+              echo "EB_CNAME=${EB_CNAME}" >> $GITHUB_ENV
+
+      - name: Remove subdomain from environment
+        run: |
+          aws route53 change-resource-record-sets \
+          --hosted-zone-id "Z08577757Z9WBXCTLOHL" \
+          --change-batch '{
+            "Changes": [
+              {
+                "Action": "DELETE",
+                "ResourceRecordSet": {
+                  "Name": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+                  "Type": "A",
+                  "AliasTarget": {
+                    "HostedZoneId": "Z14LCN19Q5QHIC",
+                    "DNSName": ${{ env.EB_CNAME }},
+                    "EvaluateTargetHealth": false
+                  }
+                }
+              }
+            ]
+          }'
+
 
       - name: Delete RDS Database
         run: |
