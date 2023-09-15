@@ -8,7 +8,12 @@ on:
   workflow_dispatch:
 
 env:
+  DB_USERNAME: ebroot
+  DB_PORT: 5432
+  DB_NAME: postgres
   PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
+  PACKAGE_ZIP: feature-${{ github.event.pull_request.number }}.zip
+  PACKAGE_ZIP_PATH: feature-${{ github.event.pull_request.number }}/feature-${{ github.event.pull_request.number }}.zip
 
 jobs:
   create-deployment-preview:
@@ -18,16 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-
-#      - name: Initial Deployment Preview Comment
-#        uses: peter-evans/create-or-update-comment@v1.4.5
-#        id: pr-preview-comment
-#        with:
-#          issue-number: ${{ github.event.pull_request.number }}
-#          body: |
-#            ### Building Deployment Preview..
-#            A preview of this Pull Request is being created. Hold tight while it's building ⚒️
-#            This comment will be automatically updated when the preview is ready.
 
       - name: Create ZIP deployment package
         run: |
@@ -43,111 +38,136 @@ jobs:
 
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
+
+      - name: Put temporary password into Environment Variable
+        run: echo "TEMP_DB_PASSWORD=$(uuidgen)" >> $GITHUB_ENV
+
+      - name: Create RDS Instance
+        run: |
+          aws rds create-db-instance \
+          --db-name ${{ env.DB_NAME }} \
+          --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
+          --db-instance-class db.t3.micro \
+          --allocated-storage 5 \
+          --engine postgres \
+          --region 'us-east-2' \
+          --master-username ${{ env.DB_USERNAME }} \
+          --no-manage-master-user-password \
+          --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
+          --port ${{ env.DB_PORT }} \
+          --no-multi-az \
+          --debug
+
+      - name: Create new ElasticBeanstalk Application Version
+        run: |
+          aws elasticbeanstalk create-application-version \
+          --application-name RestaurantPicker \
+          --source-bundle S3Bucket="restaurant-picker",S3Key=${{ env.PACKAGE_ZIP_PATH }} \
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
+          --description "${{ env.PACKAGE_NAME }}-commit-sha-${{ github.sha }}" \
+          --debug
+
+      - name: Put RDS Hostname into Environment Variable
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 40
+          timeout_seconds: 20
+          retry_wait_seconds: 15
+          command: |
+              RDS_HOSTNAME=$(aws rds describe-db-instances \
+              --db-instance-identifier "${{ env.PACKAGE_NAME }}-postgres-db" \
+              --output json \
+              --query 'DBInstances[0].Endpoint.Address')
+              if [ "$RDS_HOSTNAME" == "null" ]; then
+                echo "RDS_HOSTNAME is null, exiting..."
+                exit 1
+              fi
+              echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
+
+      - name: Deploy new ElasticBeanstalk Environment
+        run: |
+          aws elasticbeanstalk create-environment \
+          --debug \
+          --application-name RestaurantPicker \
+          --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
+          --template-name "restaurant-picker-feature-template" \
+          --option-settings '[
+            {
+              "Namespace": "aws:elasticbeanstalk:application:environment",
+              "OptionName": "RDS_DB_NAME",
+              "Value": "${{ env.DB_NAME }}"
+            }, {
+              "Namespace": "aws:elasticbeanstalk:application:environment",
+              "OptionName": "RDS_USERNAME",
+              "Value": "${{ env.DB_USERNAME }}"
+            }, {
+              "Namespace": "aws:elasticbeanstalk:application:environment",
+              "OptionName": "RDS_PASSWORD",
+              "Value": "${{ env.TEMP_DB_PASSWORD }}"
+            }, {
+              "Namespace": "aws:elasticbeanstalk:application:environment",
+              "OptionName": "RDS_HOSTNAME",
+              "Value": ${{ env.RDS_HOSTNAME }}
+            }, {
+              "Namespace": "aws:elasticbeanstalk:application:environment",
+              "OptionName": "RDS_PORT",
+              "Value": "${{ env.DB_PORT }}"
+            }
+          ]'
+
+      - name: Get EB Variables
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 40
+          timeout_seconds: 20
+          retry_wait_seconds: 15
+          command: |
+              EB_CNAME=$(aws elasticbeanstalk describe-environments \
+              --environment-name "RestaurantPicker-${{ env.PACKAGE_NAME }}" \
+              --region "us-east-2" \
+              --query 'Environments[0].CNAME')
+              if [ "$EB_CNAME" == "null" ]; then
+                echo "EB_CNAME is null, exiting..."
+                exit 1
+              fi
+              echo "EB_CNAME=${EB_CNAME}" >> $GITHUB_ENV
+
+      - name: Set up environment as a subdomain
+        run: |
+          aws route53 change-resource-record-sets \
+          --hosted-zone-id "Z08577757Z9WBXCTLOHL" \
+          --change-batch '{
+            "Changes": [
+              {
+                "Action": "UPSERT",
+                "ResourceRecordSet": {
+                  "Name": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+                  "Type": "A",
+                  "AliasTarget": {
+                    "HostedZoneId": "Z14LCN19Q5QHIC",
+                    "DNSName": ${{ env.EB_CNAME }},
+                    "EvaluateTargetHealth": false
+                  }
+                }
+              }
+            ]
+          }'
+
+      - name: Post Environment URL to Slack
+        id: slack_post
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          # This data can be any valid JSON from a previous step in the GitHub Action
+          payload: |
+            {
+              "user": "${{ github.event.pusher.email }}",
+              "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+              "pr_title": "${{ github.event.pull_request.title }}"
+            }
         env:
-          PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_CREATION_WEBHOOK_URL }}
 
-#      Not New after this
-
-#      - name: Create Docker Image
-#        run: |
-#          docker build \
-#            --build-arg BRYNTUM_REPO_KEY=${{ secrets.BRYNTUM_REPO_KEY }} \
-#            -f docker/Dockerfile \
-#            -t mybldreusprdhubacr.azurecr.io/bldrbase:pr-${{ github.event.pull_request.number }} .
-#
-#      - name: Azure Login
-#        run: |
-#          az login --service-principal \
-#            -u ${{ secrets.SERVICE_PRINCIPAL_CLIENT_ID }} \
-#            -p ${{ secrets.SERVICE_PRINCIPAL_CLIENT_SECRET }} \
-#            --tenant ${{ secrets.SERVICE_PRINCIPAL_TENANT_ID }}
-#
-#      - name: Set Account to MyBLDR Dev/Test
-#        run: |
-#          az account set --name "MyBLDR Dev/Test"
-#
-#      - name: Login to MyBLDR Registry and Upload Image
-#        run: |
-#          az acr login --name mybldreusprdhubacr
-#          docker push mybldreusprdhubacr.azurecr.io/bldrbase:pr-${{ github.event.pull_request.number }}
-#
-#      - name: Create the PR Deployment Slot
-#        run: |
-#          az webapp deployment slot create \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --configuration-source bldr-eastus-dev-exp-webapp \
-#            --slot preview-pr-${{ github.event.pull_request.number }}
-#
-#      - name: Set Slot-Specific Environment Variables
-#        run: |
-#          az webapp config appsettings set \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }} \
-#            --settings \
-#            WEBSITESPORT=80 \
-#            DJANGO_SETTINGS_MODULE=web.qa \
-#            DOCKER_REGISTRY_SERVER_USERNAME=${{ secrets.SERVICE_PRINCIPAL_CLIENT_ID }} \
-#            APP_VERSION=${{ github.sha }} \
-#            DOCKER_REGISTRY_SERVER_PASSWORD=${{ secrets.SERVICE_PRINCIPAL_CLIENT_SECRET }}
-#
-#      - name: Assign Managed Identity to Deployment Slot
-#        run: |
-#          az webapp identity assign \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }} \
-#            --identities /subscriptions/a15dc3fb-1dc0-46a8-a6f6-e520f05af58a/resourcegroups/bldr-eastus-dev-exp-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/bldr-eastus-dev-exp-uai
-#
-#      - name: Enable Container Logging
-#        run: |
-#          az webapp log config \
-#          --name bldr-eastus-dev-exp-webapp \
-#          --resource-group bldr-eastus-dev-exp-rg \
-#          --slot preview-pr-${{ github.event.pull_request.number }} \
-#          --docker-container-logging filesystem
-#
-#      - name: Enable VNet Integration on Deployment Slot
-#        run: |
-#          az webapp vnet-integration add \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }} \
-#            --vnet bldr-eastus-dev-exp-vnet \
-#            --subnet applications-sn
-#
-#      # https://learn.microsoft.com/en-us/azure/app-service/app-service-key-vault-references?tabs=azure-cli#access-vaults-with-a-user-assigned-identity
-#      - name: Access Key Vault with a User-Assigned Identity
-#        run: |
-#          userAssignedIdentityResourceId=$(az identity show -g bldr-eastus-dev-exp-rg -n bldr-eastus-dev-exp-uai --query id -o tsv)
-#          appResourceId=$(az webapp show -g bldr-eastus-dev-exp-rg -n bldr-eastus-dev-exp-webapp --slot preview-pr-${{ github.event.pull_request.number }} --query id -o tsv)
-#          az rest --method PATCH --uri "${appResourceId}?api-version=2021-01-01" --body "{'properties':{'keyVaultReferenceIdentity':'${userAssignedIdentityResourceId}'}}"
-#
-#      - name: Deploy to Azure Web App
-#        uses: azure/webapps-deploy@v2
-#        id: deploy-to-webapp
-#        with:
-#          app-name: bldr-eastus-dev-exp-webapp
-#          slot-name: preview-pr-${{ github.event.pull_request.number }}
-#          images: mybldreusprdhubacr.azurecr.io/bldrbase:pr-${{ github.event.pull_request.number }}
-#
-#      - name: Get App Service deployment slots
-#        id: get_slots
-#        run: |
-#          echo "SLOT_COUNT=$(az webapp deployment slot list --name bldr-eastus-dev-exp-webapp --resource-group bldr-eastus-dev-exp-rg --query 'length([])')" >> $GITHUB_ENV
-#
-#      - name: Update PR Preview Comment
-#        uses: peter-evans/create-or-update-comment@v1.4.5
-#        with:
-#          comment-id: ${{ steps.pr-preview-comment.outputs.comment-id }}
-#          edit-mode: replace
-#          body: |
-#            ### Deployment Preview
-#            😎 Preview this PR: https://bldr-eastus-dev-exp-webapp-preview-pr-${{ github.event.pull_request.number }}.azurewebsites.net
-#            🧑🏼‍💻 Commit SHA: ${{ github.sha }}
-#            🧮 Slot Count: ${{ env.SLOT_COUNT }} / 20
-#          reactions: 'rocket'
 
   update-deployment-preview:
     if: >
@@ -160,25 +180,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
 
-#      - name: Find PR Preview Comment
-#        uses: peter-evans/find-comment@v1
-#        id: deploy-preview-comment
-#        with:
-#          issue-number: ${{ github.event.pull_request.number }}
-#          comment-author: 'github-actions[bot]'
-#          body-includes: Deployment Preview
-#
-#      - name: Update PR Preview Comment
-#        if: steps.deploy-preview-comment.outputs.comment-id != ''
-#        uses: peter-evans/create-or-update-comment@v1.4.5
-#        with:
-#          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
-#          edit-mode: replace
-#          body: |
-#            ### Building Deployment Preview..
-#            The Pull Request preview is being updated. Hold tight while it's building ⚒️
-#            This comment will be automatically updated when the new version is ready.
-
       - name: Create ZIP deployment package
         run: |
           cd restaurant_picker
@@ -193,123 +194,32 @@ jobs:
 
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
-        env:
-          PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
 
-#      - name: Delete PR Deployment Slot
-#        run: |
-#          az webapp deployment slot delete \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }}
-#
-#      - name: Delete the Associated Docker Image
-#        run: |
-#          az acr login --name mybldreusprdhubacr
-#          az acr repository delete \
-#            --name mybldreusprdhubacr \
-#            --image bldrbase:pr-${{ github.event.pull_request.number }} \
-#            --yes
-#
-#      - name: Create Docker Image
-#        run: |
-#          docker build \
-#            --build-arg BRYNTUM_REPO_KEY=${{ secrets.BRYNTUM_REPO_KEY }} \
-#            -f docker/Dockerfile \
-#            -t mybldreusprdhubacr.azurecr.io/bldrbase:pr-${{ github.event.pull_request.number }} .
-#
-#      - name: Azure Login
-#        run: |
-#          az login --service-principal \
-#            -u ${{ secrets.SERVICE_PRINCIPAL_CLIENT_ID }} \
-#            -p ${{ secrets.SERVICE_PRINCIPAL_CLIENT_SECRET }} \
-#            --tenant ${{ secrets.SERVICE_PRINCIPAL_TENANT_ID }}
-#
-#      - name: Set Account to MyBLDR Dev/Test
-#        run: |
-#          az account set --name "MyBLDR Dev/Test"
-#
-#      - name: Login to MyBLDR Registry and Upload Image
-#        run: |
-#          az acr login --name mybldreusprdhubacr
-#          docker push mybldreusprdhubacr.azurecr.io/bldrbase:pr-${{ github.event.pull_request.number }}
-#
-#      - name: Create the PR Deployment Slot
-#        run: |
-#          az webapp deployment slot create \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --configuration-source bldr-eastus-dev-exp-webapp \
-#            --slot preview-pr-${{ github.event.pull_request.number }}
-#
-#      - name: Set Slot-Specific Environment Variables
-#        run: |
-#          az webapp config appsettings set \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }} \
-#            --settings \
-#            WEBSITESPORT=80 \
-#            DJANGO_SETTINGS_MODULE=web.qa \
-#            DOCKER_REGISTRY_SERVER_USERNAME=${{ secrets.SERVICE_PRINCIPAL_CLIENT_ID }} \
-#            APP_VERSION=${{ github.sha }} \
-#            DOCKER_REGISTRY_SERVER_PASSWORD=${{ secrets.SERVICE_PRINCIPAL_CLIENT_SECRET }}
-#
-#      - name: Assign Managed Identity to Deployment Slot
-#        run: |
-#          az webapp identity assign \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }} \
-#            --identities /subscriptions/a15dc3fb-1dc0-46a8-a6f6-e520f05af58a/resourcegroups/bldr-eastus-dev-exp-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/bldr-eastus-dev-exp-uai
-#
-#      - name: Enable Container Logging
-#        run: |
-#          az webapp log config \
-#          --name bldr-eastus-dev-exp-webapp \
-#          --resource-group bldr-eastus-dev-exp-rg \
-#          --slot preview-pr-${{ github.event.pull_request.number }} \
-#          --docker-container-logging filesystem
-#
-#      - name: Enable VNet Integration on Deployment Slot
-#        run: |
-#          az webapp vnet-integration add \
-#            --name bldr-eastus-dev-exp-webapp \
-#            --resource-group bldr-eastus-dev-exp-rg \
-#            --slot preview-pr-${{ github.event.pull_request.number }} \
-#            --vnet bldr-eastus-dev-exp-vnet \
-#            --subnet applications-sn
-#
-#      # https://learn.microsoft.com/en-us/azure/app-service/app-service-key-vault-references?tabs=azure-cli#access-vaults-with-a-user-assigned-identity
-#      - name: Access Key Vault with a User-Assigned Identity
-#        run: |
-#          userAssignedIdentityResourceId=$(az identity show -g bldr-eastus-dev-exp-rg -n bldr-eastus-dev-exp-uai --query id -o tsv)
-#          appResourceId=$(az webapp show -g bldr-eastus-dev-exp-rg -n bldr-eastus-dev-exp-webapp --slot preview-pr-${{ github.event.pull_request.number }} --query id -o tsv)
-#          az rest --method PATCH --uri "${appResourceId}?api-version=2021-01-01" --body "{'properties':{'keyVaultReferenceIdentity':'${userAssignedIdentityResourceId}'}}"
-#
-#      - name: Deploy to Azure Web App
-#        uses: azure/webapps-deploy@v2
-#        id: deploy-to-webapp
-#        with:
-#          app-name: bldr-eastus-dev-exp-webapp
-#          slot-name: preview-pr-${{ github.event.pull_request.number }}
-#          images: mybldreusprdhubacr.azurecr.io/bldrbase:pr-${{ github.event.pull_request.number }}
-#
-#      - name: Get App Service deployment slots
-#        id: get_slots
-#        run: |
-#          echo "SLOT_COUNT=$(az webapp deployment slot list --name bldr-eastus-dev-exp-webapp --resource-group bldr-eastus-dev-exp-rg --query 'length([])')" >> $GITHUB_ENV
-#
-#      - name: Update PR Preview Comment
-#        uses: peter-evans/create-or-update-comment@v1.4.5
-#        with:
-#          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
-#          edit-mode: replace
-#          body: |
-#            ### Deployment Preview
-#            😎 Preview this PR: https://bldr-eastus-dev-exp-webapp-preview-pr-${{ github.event.pull_request.number }}.azurewebsites.net
-#            🧑🏼‍💻 Commit SHA: ${{ github.sha }}
-#            🧮 Slot Count: ${{ env.SLOT_COUNT }} / 20
+      - name: Create new ElasticBeanstalk Application Version
+        run: |
+          aws elasticbeanstalk create-application-version \
+          --application-name RestaurantPicker \
+          --source-bundle S3Bucket="restaurant-picker",S3Key=${{ env.PACKAGE_ZIP_PATH }} \
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
+          --description "${{ env.PACKAGE_NAME }}-commit-sha-${{ github.sha }}"
+
+      - name: Deploy new ElasticBeanstalk Application Version
+        run: |
+          aws elasticbeanstalk update-environment \
+          --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}"
+
+      - name: Post Environment URL to Slack
+        id: slack_post
+        run: |
+          curl --request POST \
+          --url ${{ secrets.SLACK_PR_UPDATE_WEBHOOK_URL }} \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "user": "${{ github.triggering_actor }}",
+            "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+            "pr_title": "${{ github.event.pull_request.title }}"
+          }'
 
 
   delete-deployment-preview:
@@ -327,24 +237,62 @@ jobs:
 
       - name: Remove package from S3 bucket
         run: aws s3 rm s3://restaurant-picker/$PACKAGE_NAME/$PACKAGE_ZIP
-        env:
-          PACKAGE_ZIP: ${{ env.PACKAGE_NAME }}.zip
 
-#      - name: Find PR Preview Comment
-#        uses: peter-evans/find-comment@v1
-#        id: deploy-preview-comment
-#        with:
-#          issue-number: ${{ github.event.pull_request.number }}
-#          comment-author: 'github-actions[bot]'
-#          body-includes: Deployment Preview
-#
-#      - name: Update PR Preview Comment
-#        if: steps.deploy-preview-comment.outputs.comment-id != ''
-#        uses: peter-evans/create-or-update-comment@v1.4.5
-#        with:
-#          comment-id: ${{ steps.deploy-preview-comment.outputs.comment-id }}
-#          edit-mode: replace
-#          body: |
-#            ### Deployment Preview
-#            🏁 This PR has been closed. No deployment preview is available.
-#          reactions: 'hooray'
+      - name: Get EB Variables
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 40
+          timeout_seconds: 20
+          retry_wait_seconds: 15
+          command: |
+              EB_CNAME=$(aws elasticbeanstalk describe-environments \
+              --environment-name "RestaurantPicker-${{ env.PACKAGE_NAME }}" \
+              --region "us-east-2" \
+              --query 'Environments[0].CNAME')
+              if [ "$EB_CNAME" == "null" ]; then
+                echo "EB_CNAME is null, exiting..."
+                exit 1
+              fi
+              echo "EB_CNAME=${EB_CNAME}" >> $GITHUB_ENV
+
+      - name: Remove subdomain from environment
+        run: |
+          aws route53 change-resource-record-sets \
+          --hosted-zone-id "Z08577757Z9WBXCTLOHL" \
+          --change-batch '{
+            "Changes": [
+              {
+                "Action": "DELETE",
+                "ResourceRecordSet": {
+                  "Name": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+                  "Type": "A",
+                  "AliasTarget": {
+                    "HostedZoneId": "Z14LCN19Q5QHIC",
+                    "DNSName": ${{ env.EB_CNAME }},
+                    "EvaluateTargetHealth": false
+                  }
+                }
+              }
+            ]
+          }'
+
+
+      - name: Delete RDS Database
+        run: |
+          aws rds delete-db-instance \
+          --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
+          --skip-final-snapshot \
+          --delete-automated-backups
+
+      - name: Terminate Elastic Beanstalk Environment
+        run: |
+          aws elasticbeanstalk terminate-environment \
+          --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
+          --force-terminate
+
+      - name: Delete Elastic Beanstalk Application Version
+        run: |
+          aws elasticbeanstalk delete-application-version \
+          --application-name RestaurantPicker \
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}"
+          --no-delete-source-bundle 
