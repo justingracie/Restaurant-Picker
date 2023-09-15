@@ -213,16 +213,15 @@ jobs:
 
       - name: Post Environment URL to Slack
         id: slack_post
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "user": "${{ github.triggering_actor }}",
-              "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
-              "pr_title": "${{ github.event.pull_request.title }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_UPDATE_WEBHOOK_URL }}
+        run: |
+          curl --request POST \
+          --url ${{ secrets.SLACK_PR_UPDATE_WEBHOOK_URL }} \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "user": "${{ github.triggering_actor }}",
+            "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+            "pr_title": "${{ github.event.pull_request.title }}"
+          }'
 
 
   delete-deployment-preview:
