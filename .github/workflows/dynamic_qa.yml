@@ -211,6 +211,20 @@ jobs:
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}"
 
+      - name: Post Environment URL to Slack
+        id: slack_post
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          # This data can be any valid JSON from a previous step in the GitHub Action
+          payload: |
+            {
+              "user": "${{ github.triggering_actor }}",
+              "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+              "pr_title": "${{ github.event.pull_request.title }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_UPDATE_WEBHOOK_URL }}
+
 
   delete-deployment-preview:
     if: github.event.action == 'closed' || github.event.action == 'converted_to_draft'
