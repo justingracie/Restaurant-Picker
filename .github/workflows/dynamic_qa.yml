@@ -168,6 +168,16 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_CREATION_WEBHOOK_URL }}
 
+      - name: Back up Post Environment URL to Slack
+        run: |
+          curl --request POST \
+          --url ${{ secrets.SLACK_PR_CREATION_WEBHOOK_URL }} \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "user": "${{ github.triggering_actor }}",
+            "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+            "pr_title": "${{ github.event.pull_request.title }}"
+          }'
 
   update-deployment-preview:
     if: >
