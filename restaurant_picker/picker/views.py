@@ -10,7 +10,7 @@ from picker.models import Restaurant
 
 
 def index(request):
-    return HttpResponse("Yummy choices coming soon!")
+    return render(request, 'picker/home.html')
 
 
 # function to return list of all restaurants in database
