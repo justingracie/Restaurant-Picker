@@ -290,5 +290,23 @@ jobs:
         run: |
           aws elasticbeanstalk delete-application-version \
           --application-name RestaurantPicker \
-          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}"
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
           --no-delete-source-bundle 
+
+      - name: Post Environment URL to Slack
+        id: slack_post
+        run: |
+          if [ ${{github.event.pull_request.merged}} = true ]; then
+            CLOSE_TYPE="merged"
+          else
+            CLOSE_TYPE="closed"
+          fi
+          curl --request POST \
+          --url ${{ secrets.SLACK_PR_CLOSE_WEBHOOK_URL }} \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "github_user": "${{ github.triggering_actor }}",
+            "pr_title": "${{ github.event.pull_request.title }}",
+            "close_type": "${CLOSE_TYPE}",
+            "env_url": "http://${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com"
+          }'
