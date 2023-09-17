@@ -212,8 +212,8 @@ jobs:
           --url ${{ secrets.SLACK_PR_UPDATE_WEBHOOK_URL }} \
           --header 'Content-Type: application/json' \
           --data '{
-            "user": "${{ github.triggering_actor }}",
             "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+            "github_user": "${{ github.triggering_actor }}",
             "pr_title": "${{ github.event.pull_request.title }}"
           }'
 
