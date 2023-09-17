@@ -155,19 +155,15 @@ jobs:
           }'
 
       - name: Post Environment URL to Slack
-        id: slack_post
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          # This data can be any valid JSON from a previous step in the GitHub Action
-          payload: |
-            {
-              "user": "${{ github.event.pusher.email }}",
-              "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
-              "pr_title": "${{ github.event.pull_request.title }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_CREATION_WEBHOOK_URL }}
-
+        run: |
+          curl --request POST \
+          --url ${{ secrets.SLACK_PR_CREATION_WEBHOOK_URL }} \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "github_user": "${{ github.triggering_actor }}",
+            "env_url": "http://${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+            "pr_title": "${{ github.event.pull_request.title }}"
+          }'
 
   update-deployment-preview:
     if: >
@@ -217,7 +213,7 @@ jobs:
           --header 'Content-Type: application/json' \
           --data '{
             "user": "${{ github.triggering_actor }}",
-            "env_url": "${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
+            "env_url": "http://${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com",
             "pr_title": "${{ github.event.pull_request.title }}"
           }'
 
@@ -294,5 +290,23 @@ jobs:
         run: |
           aws elasticbeanstalk delete-application-version \
           --application-name RestaurantPicker \
-          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}"
+          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
           --no-delete-source-bundle 
+
+      - name: Post Environment URL to Slack
+        id: slack_post
+        run: |
+          if [ ${{github.event.pull_request.merged}} = true ]; then
+            CLOSE_TYPE="merged"
+          else
+            CLOSE_TYPE="closed"
+          fi
+          curl --request POST \
+          --url ${{ secrets.SLACK_PR_CLOSE_WEBHOOK_URL }} \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "github_user": "${{ github.triggering_actor }}",
+            "pr_title": "${{ github.event.pull_request.title }}",
+            "close_type": "${CLOSE_TYPE}",
+            "env_url": "http://${{ env.PACKAGE_NAME }}.whereshouldweeattoday.com"
+          }'
