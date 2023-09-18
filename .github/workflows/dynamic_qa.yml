@@ -8,9 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  DB_USERNAME: ebroot
-  DB_PORT: 5432
-  DB_NAME: postgres
   PACKAGE_NAME: feature-${{ github.event.pull_request.number }}
   PACKAGE_ZIP: feature-${{ github.event.pull_request.number }}.zip
   PACKAGE_ZIP_PATH: feature-${{ github.event.pull_request.number }}/feature-${{ github.event.pull_request.number }}.zip
@@ -39,41 +36,6 @@ jobs:
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
 
-      - name: Create Security Group
-        run: |
-          echo "EB_SECURITY_GROUP_ID=$(aws ec2 create-security-group \
-          --group-name ${{ env.PACKAGE_NAME }}-sg \
-          --region 'us-east-2' \
-          --description "Security group for ${{ env.PACKAGE_NAME }}" | \
-          python3 -c "import sys, json; print(json.load(sys.stdin)['GroupId'])")" >> $GITHUB_ENV
-
-      - name: Configure Security Group
-        run: |
-          aws ec2 authorize-security-group-ingress \
-          --group-id ${{ env.EB_SECURITY_GROUP_ID }} \
-          --protocol tcp \
-          --port 5432
-
-      - name: Put temporary password into Environment Variable
-        run: echo "TEMP_DB_PASSWORD=$(uuidgen)" >> $GITHUB_ENV
-
-      - name: Create RDS Instance
-        run: |
-          aws rds create-db-instance \
-          --db-name ${{ env.DB_NAME }} \
-          --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
-          --db-instance-class db.t3.micro \
-          --allocated-storage 5 \
-          --engine postgres \
-          --region 'us-east-2' \
-          --master-username ${{ env.DB_USERNAME }} \
-          --no-manage-master-user-password \
-          --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
-          --port ${{ env.DB_PORT }} \
-          --no-multi-az \
-          --vpc-security-group-ids "${{ env.EB_SECURITY_GROUP_ID }}" \
-          --debug
-
       - name: Create new ElasticBeanstalk Application Version
         run: |
           aws elasticbeanstalk create-application-version \
@@ -83,23 +45,6 @@ jobs:
           --description "${{ env.PACKAGE_NAME }}-commit-sha-${{ github.sha }}" \
           --debug
 
-      - name: Put RDS Hostname into Environment Variable
-        uses: nick-fields/retry@v2
-        with:
-          max_attempts: 20
-          timeout_seconds: 20
-          retry_wait_seconds: 30
-          command: |
-              RDS_HOSTNAME=$(aws rds describe-db-instances \
-              --db-instance-identifier "${{ env.PACKAGE_NAME }}-postgres-db" \
-              --output json \
-              --query 'DBInstances[0].Endpoint.Address')
-              if [ "$RDS_HOSTNAME" == "null" ]; then
-                echo "RDS_HOSTNAME is null, exiting..."
-                exit 1
-              fi
-              echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
-
       - name: Deploy new ElasticBeanstalk Environment
         run: |
           aws elasticbeanstalk create-environment \
@@ -107,30 +52,7 @@ jobs:
           --application-name RestaurantPicker \
           --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
-          --template-name "restaurant-picker-feature-template" \
-          --option-settings '[
-            {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_DB_NAME",
-              "Value": "${{ env.DB_NAME }}"
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_USERNAME",
-              "Value": "${{ env.DB_USERNAME }}"
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_PASSWORD",
-              "Value": "${{ env.TEMP_DB_PASSWORD }}"
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_HOSTNAME",
-              "Value": ${{ env.RDS_HOSTNAME }}
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_PORT",
-              "Value": "${{ env.DB_PORT }}"
-            }
-          ]'
+          --template-name "RestaurantPicker-env-1-sc"
 
       - name: Get EB Variables
         uses: nick-fields/retry@v2
@@ -287,14 +209,6 @@ jobs:
               }
             ]
           }'
-
-
-      - name: Delete RDS Database
-        run: |
-          aws rds delete-db-instance \
-          --db-instance-identifier ${{ env.PACKAGE_NAME }}-postgres-db \
-          --skip-final-snapshot \
-          --delete-automated-backups
 
       - name: Terminate Elastic Beanstalk Environment
         run: |
