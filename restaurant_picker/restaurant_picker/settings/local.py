@@ -9,8 +9,6 @@ if not os.path.exists(DOTENV):
     raise ImportError
 load_dotenv(dotenv_path=DOTENV)
 
-print("using local settings")
-
 DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
