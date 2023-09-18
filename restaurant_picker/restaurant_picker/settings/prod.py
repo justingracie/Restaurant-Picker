@@ -3,14 +3,10 @@ Django settings for production instance of restaurant_picker project
 """
 import os
 from pathlib import Path
-
 import socket
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-
 DEBUG = False
-
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ["SECRET_KEY"]
 
 
