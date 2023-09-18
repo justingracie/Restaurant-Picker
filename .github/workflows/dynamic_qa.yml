@@ -70,7 +70,7 @@ jobs:
           --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
           --port ${{ env.DB_PORT }} \
           --no-multi-az \
-          --vpc-security-group-ids "${{ env.EB_SECURITY_GROUP_ID }} \
+          --vpc-security-group-ids "${{ env.EB_SECURITY_GROUP_ID }}" \
           --debug
 
       - name: Create new ElasticBeanstalk Application Version
