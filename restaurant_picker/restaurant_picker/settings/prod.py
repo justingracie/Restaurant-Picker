@@ -37,8 +37,6 @@ ALLOWED_HOSTS = [
     _local_ip,
 ]
 
-STATIC_ROOT = os.path.join(BASE_DIR, "static/")
-STATIC_URL = "/static/"
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
