@@ -43,6 +43,7 @@ jobs:
         run: |
           echo "EB_SECURITY_GROUP_ID=$(aws ec2 create-security-group \
           --group-name ${{ env.PACKAGE_NAME }}-sg \
+          --region 'us-east-2' \
           --description "Security group for ${{ env.PACKAGE_NAME }}" | \
           python3 -c "import sys, json; print(json.load(sys.stdin)['GroupId'])")" >> $GITHUB_ENV
 
@@ -100,40 +101,45 @@ jobs:
               echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
-        run: |
-          aws elasticbeanstalk create-environment \
-          --debug \
-          --application-name RestaurantPicker \
-          --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
-          --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
-          --template-name "restaurant-picker-feature-template" \
-          --option-settings '[
-            {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_DB_NAME",
-              "Value": "${{ env.DB_NAME }}"
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_USERNAME",
-              "Value": "${{ env.DB_USERNAME }}"
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_PASSWORD",
-              "Value": "${{ env.TEMP_DB_PASSWORD }}"
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_HOSTNAME",
-              "Value": ${{ env.RDS_HOSTNAME }}
-            }, {
-              "Namespace": "aws:elasticbeanstalk:application:environment",
-              "OptionName": "RDS_PORT",
-              "Value": "${{ env.DB_PORT }}"
-            }, {
-              "Namespace": "aws:autoscaling:launchconfiguration",
-              "OptionName": "SecurityGroups",
-              "Value": "${{ env.EB_SECURITY_GROUP_ID }}"
-            }
-          ]'
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 20
+          timeout_seconds: 20
+          retry_wait_seconds: 30
+          command: |
+            aws elasticbeanstalk create-environment \
+            --debug \
+            --application-name RestaurantPicker \
+            --environment-name RestaurantPicker-${{ env.PACKAGE_NAME }} \
+            --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
+            --template-name "restaurant-picker-feature-template" \
+            --option-settings '[
+              {
+                "Namespace": "aws:elasticbeanstalk:application:environment",
+                "OptionName": "RDS_DB_NAME",
+                "Value": "${{ env.DB_NAME }}"
+              }, {
+                "Namespace": "aws:elasticbeanstalk:application:environment",
+                "OptionName": "RDS_USERNAME",
+                "Value": "${{ env.DB_USERNAME }}"
+              }, {
+                "Namespace": "aws:elasticbeanstalk:application:environment",
+                "OptionName": "RDS_PASSWORD",
+                "Value": "${{ env.TEMP_DB_PASSWORD }}"
+              }, {
+                "Namespace": "aws:elasticbeanstalk:application:environment",
+                "OptionName": "RDS_HOSTNAME",
+                "Value": ${{ env.RDS_HOSTNAME }}
+              }, {
+                "Namespace": "aws:elasticbeanstalk:application:environment",
+                "OptionName": "RDS_PORT",
+                "Value": "${{ env.DB_PORT }}"
+              }, {
+                "Namespace": "aws:autoscaling:launchconfiguration",
+                "OptionName": "SecurityGroups",
+                "Value": ["${{ env.EB_SECURITY_GROUP_ID }}"]
+              }
+            ]'
 
       - name: Get EB Variables
         uses: nick-fields/retry@v2
