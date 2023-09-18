@@ -9,7 +9,6 @@ DEBUG = False
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ["SECRET_KEY"]
 
-
 if 'RDS_HOSTNAME' in os.environ:
     DATABASES = {
         'default': {
