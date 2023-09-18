@@ -39,8 +39,6 @@ CSRF_TRUSTED_ORIGINS = [
     "http://*.us-east-2.elasticbeanstalk.com",
 ]
 
-STATIC_ROOT = "/var/app/current/static"
-
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 USE_X_FORWARDED_PORT = True
