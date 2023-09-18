@@ -33,7 +33,11 @@ ALLOWED_HOSTS = [
     _local_ip,
 ]
 
-CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = [
+    "http://whereshouldweeattoday.com",
+    "http://*.whereshouldweeattoday.com",
+    "http://*.us-east-2.elasticbeanstalk.com",
+]
 
 
 CSRF_COOKIE_SECURE = False
