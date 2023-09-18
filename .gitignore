@@ -4,5 +4,7 @@ venv/
 .env.development
 db.sqlite3
 .DS_Store
-
-
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

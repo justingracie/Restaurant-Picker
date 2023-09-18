@@ -2,21 +2,18 @@
 Django settings for production instance of restaurant_picker project
 """
 import os
+from pathlib import Path
 import socket
 
-
-
 DEBUG = False
-
-print("using prod settings")
-
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ["SECRET_KEY"]
 
 
 if 'RDS_HOSTNAME' in os.environ:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
             'NAME': os.environ['RDS_DB_NAME'],
             'USER': os.environ['RDS_USERNAME'],
             'PASSWORD': os.environ['RDS_PASSWORD'],
@@ -31,13 +28,19 @@ _local_ip = socket.gethostbyname(_hostname)
 ALLOWED_HOSTS = [
     "whereshouldweeattoday.com",
     ".whereshouldweeattoday.com",
+    ".us-east-2.elasticbeanstalk.com",
     _hostname,
     _local_ip,
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://whereshouldweeattoday.com",
+    "http://*.whereshouldweeattoday.com",
+    "http://*.us-east-2.elasticbeanstalk.com",
+]
 
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
 USE_X_FORWARDED_PORT = True
 
 # Logging Config
