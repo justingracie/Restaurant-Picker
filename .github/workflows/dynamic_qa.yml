@@ -137,7 +137,7 @@ jobs:
               }, {
                 "Namespace": "aws:autoscaling:launchconfiguration",
                 "OptionName": "SecurityGroups",
-                "Value": ["${{ env.EB_SECURITY_GROUP_ID }}"]
+                "Value": "${{ env.EB_SECURITY_GROUP_ID }}"
               }
             ]'
 
