@@ -49,10 +49,9 @@ jobs:
       - name: Configure Security Group
         run: |
           aws ec2 authorize-security-group-ingress \
-          --group-id ${{ env.EB_SECURITY_GROUP }} \
+          --group-id ${{ env.EB_SECURITY_GROUP_ID }} \
           --protocol tcp \
           --port 5432
-
 
       - name: Put temporary password into Environment Variable
         run: echo "TEMP_DB_PASSWORD=$(uuidgen)" >> $GITHUB_ENV
@@ -311,7 +310,7 @@ jobs:
           aws elasticbeanstalk delete-application-version \
           --application-name RestaurantPicker \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
-          --no-delete-source-bundle 
+          --no-delete-source-bundle
 
       - name: Post Environment URL to Slack
         id: slack_post
