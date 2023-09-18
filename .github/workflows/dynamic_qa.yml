@@ -39,6 +39,21 @@ jobs:
       - name: Upload package to S3 bucket
         run: aws s3 cp $PACKAGE_ZIP s3://restaurant-picker/$PACKAGE_NAME/
 
+      - name: Create Security Group
+        run: |
+          echo "EB_SECURITY_GROUP_ID=$(aws ec2 create-security-group \
+          --group-name ${{ env.PACKAGE_NAME }}-sg \
+          --region 'us-east-2' \
+          --description "Security group for ${{ env.PACKAGE_NAME }}" | \
+          python3 -c "import sys, json; print(json.load(sys.stdin)['GroupId'])")" >> $GITHUB_ENV
+
+      - name: Configure Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+          --group-id ${{ env.EB_SECURITY_GROUP_ID }} \
+          --protocol tcp \
+          --port 5432
+
       - name: Put temporary password into Environment Variable
         run: echo "TEMP_DB_PASSWORD=$(uuidgen)" >> $GITHUB_ENV
 
@@ -56,6 +71,7 @@ jobs:
           --master-user-password ${{ env.TEMP_DB_PASSWORD }} \
           --port ${{ env.DB_PORT }} \
           --no-multi-az \
+          --vpc-security-group-ids "${{ env.EB_SECURITY_GROUP_ID }}" \
           --debug
 
       - name: Create new ElasticBeanstalk Application Version
@@ -70,9 +86,9 @@ jobs:
       - name: Put RDS Hostname into Environment Variable
         uses: nick-fields/retry@v2
         with:
-          max_attempts: 40
+          max_attempts: 20
           timeout_seconds: 20
-          retry_wait_seconds: 15
+          retry_wait_seconds: 30
           command: |
               RDS_HOSTNAME=$(aws rds describe-db-instances \
               --db-instance-identifier "${{ env.PACKAGE_NAME }}-postgres-db" \
@@ -291,7 +307,7 @@ jobs:
           aws elasticbeanstalk delete-application-version \
           --application-name RestaurantPicker \
           --version-label "${{ env.PACKAGE_NAME }}-${{ github.sha }}" \
-          --no-delete-source-bundle 
+          --no-delete-source-bundle
 
       - name: Post Environment URL to Slack
         id: slack_post
