@@ -101,7 +101,6 @@ jobs:
               echo "RDS_HOSTNAME=${RDS_HOSTNAME}" >> $GITHUB_ENV
 
       - name: Deploy new ElasticBeanstalk Environment
-        uses: nick-fields/retry@v2
         run: |
           aws elasticbeanstalk create-environment \
           --debug \
