@@ -18,20 +18,16 @@
 {% block content %}
 <div class="container">
 
-<h1> Where will we Eat today? </h1>
+<h1> What is Where will we Eat today? </h1>
+<p>Where will we Eat today? is a web app that helps you decide where to eat. It is a simple app that will randomly choose a restaurant for you to eat at. </p>
 
+    <div class="container">
 
-<form method="post">
-    {% csrf_token %}
-    <button type="submit" class="button">Choose for me!</button>
-</form>
+    <h3>Feeling Decisive?</h3>
+    <p>To see a list of all the restaurants to visit just click the 'restaurants' link in the nav.</p>
+    <h3>Don't want to make a decision?</h3>
+    <p>navigate to `Where to Eat?` and click the button for us to choose for you!</p>
 
-<div id="choose-for-me" class="container">
-    <p><strong>Name: </strong>{{ the_choice.name }}</p>
-    <p><strong>Address: </strong>{{ the_choice.address }}</p>
-    <p> <strong>Description: </strong>{{ the_choice.description }}</p>
-    <h2><a href="{{ the_choice.menu }}">Menu</a></h2>
-</div>
-
+    </div>
 </div>
 {% endblock %}

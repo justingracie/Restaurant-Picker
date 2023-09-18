@@ -1,0 +1,96 @@
+/* styles.css */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+/* Your custom styles here */
+
+
+
+/* Reset default margin and padding for all elements */
+* {
+    margin: 0;
+    padding: 0;
+}
+
+/* Apply a background color to the entire page */
+body {
+    background-color: #f0f0f0; /* Choose a color you like */
+    font-family: Arial, sans-serif; /* Choose a suitable font-family */
+}
+
+/* Add some padding and center content in a container */
+.container {
+    max-width: 960px; /* Adjust the maximum width as needed */
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Style headings and text */
+h1, h2, h3 {
+    color: #333; /* Text color */
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+p {
+    color: #666; /* Text color */
+    line-height: 1.6;
+}
+
+/* Style links */
+a {
+    color: #007bff; /* Link color */
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Add some spacing between elements */
+.space {
+    margin-bottom: 20px;
+}
+
+/* Style buttons */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff; /* Button background color */
+    color: #fff; /* Button text color */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #0056b3; /* Button background color on hover */
+}
+/* styles.css */
+
+/* Style the navigation bar */
+nav {
+    background-color: #333; /* Background color for the navigation bar */
+    color: #007bff; /* Text color for the navigation links */
+    height: 50px;
+}
+
+nav ul {
+    list-style-type: none; /* Remove list bullets */
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: inline; /* Display list items horizontally */
+    margin-right: 20px; /* Add some spacing between navigation links */
+}
+
+nav ul li a {
+    text-decoration: none; /* Remove underlines from links */
+    color: #fff; /* Text color for the navigation links */
+}
+
+nav ul li a:hover {
+    text-decoration: underline; /* Add underline on hover */
+}

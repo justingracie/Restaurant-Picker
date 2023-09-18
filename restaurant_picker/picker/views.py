@@ -13,8 +13,8 @@ LOGGER = logging.getLogger()
 
 
 def index(request):
-    LOGGER.info("reaching index view method")
-    return HttpResponse("Yummy choices coming soon!")
+    return render(request, 'picker/home.html')
+
 
 
 # function to return list of all restaurants in database
